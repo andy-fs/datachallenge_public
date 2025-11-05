@@ -819,7 +819,7 @@ with tab1:
         # Show statistics for selected date range
         if has_train_data and not daily_data.empty:            
             st.markdown("#### 📊 Statistieken")
-            col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+            col_stat1, col_stat2, col_stat3, col_stat4, col_stat5 = st.columns(5)
             with col_stat1:
                 avg_storingen = display_data['storingen_count'].mean()
                 st.metric("Gem. storingen/dag", f"{avg_storingen:.1f}")
@@ -833,11 +833,17 @@ with tab1:
                 else:
                     st.metric("Correlatie", "N/A")
             with col_stat4:
+                # Calculate date range in days
+                if len(display_data) > 0:
+                    date_range_days = (display_data['date'].max() - display_data['date'].min()).days + 1
+                    st.metric("Datumbereik (dagen)", f"{date_range_days}")
+                else:
+                    st.metric("Datumbereik (dagen)", "0")
+            with col_stat5:
                 days_with_data = len(display_data)
-                st.metric("Dagen met data", f"{days_with_data}")
+                st.metric("Aantal observaties", f"{days_with_data}")
             
-            # Add date range info
-            st.caption(f"**Weergave:** {date_info}")
+            # Add date range info (simplified)
             st.caption(f"**Datumbereik:** {display_data['date'].min()} tot {display_data['date'].max()}")
 
 with tab2:
