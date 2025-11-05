@@ -1448,7 +1448,7 @@ def train_and_evaluate_models():
     with st.expander("📋 Data Overzicht"):
         # Dropdown to show last observations
         col1, col2 = st.columns([3, 1])
-
+    
         with col2:
             show_last_observations = st.selectbox(
                 "Toon laatste observaties:",
@@ -1456,56 +1456,124 @@ def train_and_evaluate_models():
                 index=0,
                 key="last_obs_selector"
             )
-
+    
+        # Safe display function for dataframes
+        def safe_display_simple(df, description=""):
+            """Simple safe display that converts everything to strings"""
+            if df is None or df.empty:
+                return None
+            try:
+                # Convert all data to strings for safe display
+                display_df = df.head(10).copy()
+                for col in display_df.columns:
+                    display_df[col] = display_df[col].astype(str)
+                return display_df
+            except Exception:
+                return None
+    
         # Determine which original storings data to display
+        st.write("### 📊 Originele Storingsdata")
+        
         if st.session_state.pm_config['data_source'] == "Alle bruggen gecombineerd":
-            # For combined data, show last 10 observations from HGWBRN original data
+            # For combined data, show HGWBRN as representative
             if st_HN is not None and len(st_HN) > 0:
-                st.write("**Laatste 10 storingsobservaties - HGWBRN (originele data):**")
-                if show_last_observations == "Laatste 10 observaties":
-                    if len(st_HN) >= 14:
-                        st.dataframe(safe_dataframe_display(st_HN.tail(14).head(10)))  # Show rows 11-20 from the end
-                    else:
-                        st.dataframe(safe_dataframe_display(st_HN.head(10)))  # Fallback if not enough data
+                st.write("**HGWBRN (voorbeeld van originele storingsdata):**")
+                display_df = safe_display_simple(st_HN)
+                if display_df is not None:
+                    st.dataframe(display_df)
                 else:
-                    st.dataframe(safe_dataframe_display(st_HN.head(10)))
+                    st.info("Kon data niet weergeven")
             else:
                 st.warning("Geen HGWBRN storingsdata beschikbaar")
+                
+            # Show brief info about other bridges
+            st.write("**Overzicht andere bruggen:**")
+            col_b1, col_b2, col_b3 = st.columns(3)
+            with col_b1:
+                st.metric("HGWBRN rijen", len(st_HN) if st_HN is not None else 0)
+            with col_b2:
+                st.metric("HGWBRZ rijen", len(st_HZ) if st_HZ is not None else 0)
+            with col_b3:
+                st.metric("GWBR rijen", len(st_GW) if st_GW is not None else 0)
+                
         else:
-            # For single bridge, show last 10 observations of selected bridge's original data
+            # For single bridge, show selected bridge's data
             selected_bridge = st.session_state.pm_config['selected_bridge']
             storings_map = {
                 "HGWBRN": st_HN,
                 "HGWBRZ": st_HZ,
                 "GWBR": st_GW
             }
-
+    
             storings_df = storings_map[selected_bridge]
             if storings_df is not None and len(storings_df) > 0:
-                st.write(f"**Laatste 10 storingsobservaties - {selected_bridge} (originele data):**")
-                if show_last_observations == "Laatste 10 observaties":
-                    if len(storings_df) >= 14:
-                        st.dataframe(safe_dataframe_display(storings_df.tail(14).head(10)))  # Show rows 11-20 from the end
-                    else:
-                        st.dataframe(safe_dataframe_display(storings_df.head(10)))  # Fallback if not enough data
+                st.write(f"**{selected_bridge} (originele storingsdata):**")
+                display_df = safe_display_simple(storings_df)
+                if display_df is not None:
+                    st.dataframe(display_df)
                 else:
-                    st.dataframe(safe_dataframe_display(storings_df.head(10)))
+                    st.info("Kon data niet weergeven")
+                    
+                # Show basic stats
+                st.write(f"**Statistieken {selected_bridge}:**")
+                col_s1, col_s2, col_s3 = st.columns(3)
+                with col_s1:
+                    st.metric("Totaal rijen", len(storings_df))
+                with col_s2:
+                    st.metric("Tijdsbereik", f"{storings_df['time_local'].min().strftime('%Y-%m-%d')} tot {storings_df['time_local'].max().strftime('%Y-%m-%d')}" 
+                             if 'time_local' in storings_df.columns and not storings_df['time_local'].isna().all() else "Onbekend")
+                with col_s3:
+                    unique_errors = storings_df['MsgNumber'].nunique() if 'MsgNumber' in storings_df.columns else 0
+                    st.metric("Unieke foutcodes", unique_errors)
             else:
                 st.warning(f"Geen storingsdata beschikbaar voor {selected_bridge}")
-
-        # Keep the existing statistics for the predictive dataset
-        st.write("**Predictive Dataset Statistieken:**")
-        st.write(f"Totaal observaties: {len(df_predictive)}")
-        st.write(f"Training observaties: {split_result['total_train']}")
-        st.write(f"Test observaties: {split_result['total_test']}")
-        st.write(f"Buffer observaties: {split_result['total_buffer']}")
-        st.write(f"Aantal test chunks: {len(split_result['test_chunks'])}")
-        st.write(f"Features: {len(df_predictive.columns) - 3}")  # min 3 target kolommen (incl. brug)
-
-        if st.session_state.pm_config['data_source'] == "Alle bruggen gecombineerd":
-            st.write("**Verdeling over bruggen:**")
-            bridge_dist = df_predictive['brug'].value_counts()
-            st.write(bridge_dist)
+    
+        # Predictive dataset statistics
+        st.write("### 🤖 Predictive Dataset Statistieken")
+        
+        if df_predictive is not None and len(df_predictive) > 0:
+            col_stats1, col_stats2, col_stats3 = st.columns(3)
+            
+            with col_stats1:
+                st.metric("Totaal observaties", len(df_predictive))
+                st.metric("Training observaties", split_result['total_train'])
+                
+            with col_stats2:
+                st.metric("Test observaties", split_result['total_test'])
+                st.metric("Buffer observaties", split_result['total_buffer'])
+                
+            with col_stats3:
+                st.metric("Aantal test chunks", len(split_result['test_chunks']))
+                st.metric("Features", len(df_predictive.columns) - 3)  # min 3 target kolommen (incl. brug)
+    
+            # Bridge distribution for combined data
+            if st.session_state.pm_config['data_source'] == "Alle bruggen gecombineerd":
+                st.write("**Verdeling over bruggen:**")
+                bridge_dist = df_predictive['brug'].value_counts()
+                
+                # Display as metrics instead of raw dataframe
+                if len(bridge_dist) > 0:
+                    cols = st.columns(len(bridge_dist))
+                    for (bridge, count), col in zip(bridge_dist.items(), cols):
+                        with col:
+                            st.metric(bridge, count)
+                else:
+                    st.info("Geen brugverdeling beschikbaar")
+                    
+            # Data quality info
+            st.write("**Datakwaliteit:**")
+            missing_data = df_predictive.isnull().sum().sum()
+            total_cells = df_predictive.size
+            quality_pct = ((total_cells - missing_data) / total_cells * 100) if total_cells > 0 else 0
+            
+            col_qual1, col_qual2 = st.columns(2)
+            with col_qual1:
+                st.metric("Ontbrekende waarden", missing_data)
+            with col_qual2:
+                st.metric("Data kwaliteit", f"{quality_pct:.1f}%")
+                
+        else:
+            st.warning("Geen predictive data beschikbaar voor weergave")
 
 
     # Train modellen
