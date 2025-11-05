@@ -32,29 +32,16 @@ import plotly.graph_objects as go
 
 def safe_st_dataframe(df, max_rows=1000, description="", **kwargs):
     """
-    Safely display dataframe without Arrow serialization errors
-    Accepts any kwargs for st.dataframe()
+    Safely display dataframe using st.table() which is more robust
     """
     if df is None or len(df) == 0:
         st.info(f"Geen data om weer te geven{description}")
         return
     
-    try:
-        # Create a clean copy
-        display_df = df.head(max_rows).copy()
-        
-        # Convert ALL columns to strings
-        for col in display_df.columns:
-            display_df[col] = display_df[col].astype(str)
-        
-        # Display the safe dataframe with any kwargs
-        st.dataframe(display_df, **kwargs)
-        
-    except Exception as e:
-        # Ultimate fallback
-        st.write(f"📊 Data overzicht ({description}):")
-        st.write(f"- Rijen: {len(df)}")
-        st.write(f"- Kolommen: {list(df.columns)}")
+    display_df = df.head(max_rows).copy()
+    
+    # st.table() is much more tolerant of mixed data types
+    st.table(display_df)
 
 
 # --------------------
