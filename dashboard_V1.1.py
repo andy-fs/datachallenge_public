@@ -1022,7 +1022,7 @@ with tab2:
                     "followup_msg": "Meest voorkomende follow-up",
                     "followup_count": "Aantal follow-ups",
                     "followup_pct": "Share follow-up"
-                }), width='stretch')
+                }))
 
         long_rows = []
         for _, r in followup_df.iterrows():
