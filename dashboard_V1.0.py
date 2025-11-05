@@ -352,9 +352,19 @@ except Exception as e:
 # Overzicht
 # --------------------
 st.title("🚉 ProRail Bruggen Dashboard")
-st.caption("Hoge Gouwespoorbrug Noord/Zuid (hefbrug) & Lage Gouwespoorbrug (draaibrug).")
-st.caption("Probeer vooral te zoomen en rond te klikken (op de legenda's).")
-st.caption("Tip voor mobile users: activeer Desktopsite via je browser instellingen voor deze website.")
+
+st.markdown("_____")
+
+st.markdown("""
+Hoge Gouwespoorbrug Noord/Zuid (hefbrug) & Lage Gouwespoorbrug (draaibrug).
+
+**🎯 Interactie tips:** 
+- **Zoomen:** Horizontaal of verticaal slepen in grafieken
+- **Legenda:** Klik op legendalabels om series te tonen/verbergen
+- **Details:** Hover over datapunten voor meer informatie
+
+**📱 Mobiel gebruik:** Voor de beste ervaring op mobiel, activeer 'Desktopsite' in je browserinstellingen.
+""")
 
 
 # --------------------
@@ -375,10 +385,20 @@ tags2 = sorted([t for t in df_sel["tag2"].dropna().unique() if str(t).strip() !=
 col1, col2 = st.columns(2)
 
 with col1:
+    # Set default to Noodknop if available, otherwise first alphabetical
+    default_tag1 = []
+    preferred_tags = ["Noodknop", "Bedienbrugpost"]
+    for pref_tag in preferred_tags:
+        if pref_tag in tags1:
+            default_tag1 = [pref_tag]
+            break
+    if not default_tag1 and tags1:
+        default_tag1 = [tags1[0]]
+    
     tag1_pick = st.multiselect(
         "tag1 (onderdeel)",
         tags1,
-        default=tags1[:1],
+        default=default_tag1,
         key=f"tag1_{bridge_choice}"
     )
 
@@ -390,10 +410,21 @@ else:
 key_tag2 = f"tag2_{bridge_choice}_{'_'.join(tag1_pick) if tag1_pick else 'all'}"
 
 with col2:
+    # Set default to emergency-related tags if available
+    default_tag2 = []
+    preferred_tags2 = ["bNS_OK", "bNSknop_OK", "bCmdOpenen"]
+    
+    # Check if any preferred tags are available
+    available_preferred = [tag for tag in preferred_tags2 if tag in valid_tag2]
+    if available_preferred:
+        default_tag2 = [available_preferred[0], available_preferred[1]]  # Take the first two available preferred tags
+    elif valid_tag2:
+        default_tag2 = [valid_tag2[0]]  # Fallback to first alphabetical
+    
     tag2_pick = st.multiselect(
         "tag2 (status)",
         valid_tag2,
-        default=valid_tag2[:1] if valid_tag2 else [],
+        default=default_tag2,
         key=key_tag2
     )
 
