@@ -1213,7 +1213,7 @@ def prepare_predictive_data_single(bridge_name):
         df_sorted['interarrival_seconds'] = df_sorted['time_diff'].replace(0, 1e-6)
 
         # Maak lag features
-        n_lags = 10
+        n_lags = 7
 
         def create_lags(series, n_lags, prefix):
             lags_df = pd.DataFrame()
