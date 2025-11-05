@@ -653,18 +653,26 @@ with tab1:
         
         st_df_edited = pd.read_csv(file_paths[st_choice], sep=';', encoding='latin1')
         
-        # SIMPLE: Just copy the Trein column if row counts match
-        if len(st_df) == len(st_df_edited) and 'Trein' in st_df_edited.columns:
-            st_df['Trein'] = st_df_edited['Trein'].values
+        # SIMPLE: Just copy the Trein and Trein_cum columns if row counts match
+        if len(st_df) == len(st_df_edited):
+            if 'Trein' in st_df_edited.columns:
+                st_df['Trein'] = st_df_edited['Trein'].values
+            if 'Trein_cum' in st_df_edited.columns:
+                st_df['Trein_cum'] = st_df_edited['Trein_cum'].values
+                has_cum_data = True
+            else:
+                has_cum_data = False
             st.success("✅ Trein data toegevoegd")
             has_train_data = True
         else:
             st.warning(f"Row mismatch: {len(st_df)} vs {len(st_df_edited)}")
             has_train_data = False
+            has_cum_data = False
             
     except Exception as e:
         st.warning(f"Kon trein data niet laden: {e}")
         has_train_data = False
+        has_cum_data = False
     
     if st_df.empty or st_df["time_local"].isna().all():
         st.info("Geen storingsdata of geen parsebare tijd.")
@@ -675,6 +683,14 @@ with tab1:
                 storingen_count=('time_local', 'count'),
                 gem_treinen_per_uur=('Trein', 'mean')
             ).reset_index()
+            
+            # Add cumulative trains if available
+            if has_cum_data:
+                # For cumulative data, we need to handle it differently since it's cumulative between failures
+                # We'll take the sum of Trein_cum for the selected period
+                st_df['date'] = st_df['time_local'].dt.date
+                daily_cum_data = st_df.groupby('date')['Trein_cum'].sum().reset_index()
+                daily_data = daily_data.merge(daily_cum_data, on='date', how='left')
         else:
             daily_data = st_df.assign(date=st_df["time_local"].dt.date).groupby("date").agg(
                 storingen_count=('time_local', 'count')
@@ -708,16 +724,13 @@ with tab1:
         if start_date > end_date:
             st.error("❌ Startdatum moet voor einddatum liggen")
             display_data = daily_data
-            date_info = "ongeldig datumbereik - toon volledige dataset"
         else:
             # Filter data to selected date range
             date_mask = (daily_data['date'] >= start_date) & (daily_data['date'] <= end_date)
             display_data = daily_data[date_mask]
             
-            if len(display_data) > 0:
-                date_info = f"geselecteerd datumbereik ({len(display_data)} dagen)"
-            else:
-                date_info = "geen data in geselecteerd bereik - toon volledige dataset"
+            if len(display_data) == 0:
+                st.warning("Geen data in geselecteerd bereik - toon volledige dataset")
                 display_data = daily_data
         
         if has_train_data and not daily_data.empty:
@@ -819,7 +832,18 @@ with tab1:
         # Show statistics for selected date range
         if has_train_data and not daily_data.empty:            
             st.markdown("#### 📊 Statistieken")
-            col_stat1, col_stat2, col_stat3, col_stat4, col_stat5 = st.columns(5)
+            
+            # Calculate total trains if cumulative data is available
+            total_trains = None
+            if has_cum_data and 'Trein_cum' in display_data.columns:
+                total_trains = display_data['Trein_cum'].sum()
+            
+            # Adjust columns based on available data
+            if has_cum_data and total_trains is not None:
+                col_stat1, col_stat2, col_stat3, col_stat4, col_stat5, col_stat6 = st.columns(6)
+            else:
+                col_stat1, col_stat2, col_stat3, col_stat4, col_stat5 = st.columns(5)
+            
             with col_stat1:
                 avg_storingen = display_data['storingen_count'].mean()
                 st.metric("Gem. storingen/dag", f"{avg_storingen:.1f}")
@@ -832,16 +856,32 @@ with tab1:
                     st.metric("Correlatie", f"{correlation:.2f}")
                 else:
                     st.metric("Correlatie", "N/A")
-            with col_stat4:
-                # Calculate date range in days
-                if len(display_data) > 0:
-                    date_range_days = (display_data['date'].max() - display_data['date'].min()).days + 1
-                    st.metric("Datumbereik (dagen)", f"{date_range_days}")
-                else:
-                    st.metric("Datumbereik (dagen)", "0")
-            with col_stat5:
-                days_with_data = len(display_data)
-                st.metric("Aantal observaties", f"{days_with_data}")
+            
+            # Add total trains metric if available
+            if has_cum_data and total_trains is not None:
+                with col_stat4:
+                    st.metric("Totaal treinen", f"{total_trains:,.0f}".replace(",", "."))
+                with col_stat5:
+                    # Calculate date range in days
+                    if len(display_data) > 0:
+                        date_range_days = (display_data['date'].max() - display_data['date'].min()).days + 1
+                        st.metric("Datumbereik (dagen)", f"{date_range_days}")
+                    else:
+                        st.metric("Datumbereik (dagen)", "0")
+                with col_stat6:
+                    days_with_data = len(display_data)
+                    st.metric("Aantal observaties", f"{days_with_data}")
+            else:
+                with col_stat4:
+                    # Calculate date range in days
+                    if len(display_data) > 0:
+                        date_range_days = (display_data['date'].max() - display_data['date'].min()).days + 1
+                        st.metric("Datumbereik (dagen)", f"{date_range_days}")
+                    else:
+                        st.metric("Datumbereik (dagen)", "0")
+                with col_stat5:
+                    days_with_data = len(display_data)
+                    st.metric("Aantal observaties", f"{days_with_data}")
             
 with tab2:
     st.markdown("### Meest voorkomende meldingen")
