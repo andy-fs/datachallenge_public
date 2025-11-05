@@ -1076,13 +1076,19 @@ with col_config2:
 # Data Preparation for Predictive Modeling
 # --------------------
 
-#@st.cache_data(show_spinner=False, max_entries=2)
+@st.cache_data(show_spinner=False, max_entries=2)
 def read_clean_storing_csv_for_rf(path: str, sep: str = ";") -> pd.DataFrame:
-    """Read clean storings data specifically for RF models - no modifications"""
     encodings_to_try = ["utf-8", "latin1", "windows-1252"]
     for enc in encodings_to_try:
         try:
-            df = pd.read_csv(path, sep=sep, encoding=enc)
+            # Fix: Specify dtype for mixed-type columns and use low_memory=False
+            df = pd.read_csv(
+                path, 
+                sep=sep, 
+                encoding=enc,
+                dtype={'MsgNumber': str, 'MsgProc': str, 'StateAfter': str},  # Force as strings
+                low_memory=False  # Prevents mixed-type warnings
+            )
             break
         except UnicodeDecodeError:
             continue
@@ -1098,14 +1104,20 @@ def read_clean_storing_csv_for_rf(path: str, sep: str = ";") -> pd.DataFrame:
     else:
         df["time_local"] = pd.NaT
 
-    for c in ["MsgText", "PLC", "MsgClass", "MsgNumber"]:
+    # Convert numeric columns properly, handling errors
+    for col in ["MsgNumber", "MsgProc", "StateAfter"]:
+        if col in df.columns:
+            # Convert to numeric, coerce errors to NaN, then fill with 0
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+    
+    for c in ["MsgText", "PLC", "MsgClass"]:
         if c not in df.columns:
             df[c] = ""
 
     return df.sort_values("time_local").reset_index(drop=True)
 
 
-@st.cache_data(show_spinner=False, max_entries=1)
+@st.cache_data(show_spinner=False, max_entries=1, ttl=1800)
 def prepare_predictive_data_combined():
     """Bereid gecombineerde data voor van alle bruggen - USES FRESH DATA"""
     try:
@@ -1126,6 +1138,11 @@ def prepare_predictive_data_combined():
             if missing_cols:
                 st.warning(f"Ontbrekende kolommen voor {bridge_name}: {missing_cols}")
                 continue
+
+            # FIX: Ensure consistent data types across all bridges
+            for col in ['MsgNumber', 'MsgProc', 'StateAfter']:
+                if col in storings_df.columns:
+                    storings_df[col] = pd.to_numeric(storings_df[col], errors='coerce').fillna(0).astype(int)
 
             # Sorteer op tijd
             df_sorted = storings_df.sort_values('time_local').reset_index(drop=True)
@@ -1158,6 +1175,9 @@ def prepare_predictive_data_combined():
                 interarrival_lags
             ], axis=1)
 
+            # FIX: Convert all column names to strings to avoid scikit-learn warnings
+            features_df.columns = features_df.columns.astype(str)
+            
             # Voeg target variabelen toe
             features_df['Y1_time_until_next'] = df_sorted['interarrival_seconds'].shift(-1)
             features_df['Y2_volgendeStoring'] = df_sorted['MsgNumber'].shift(-1)
@@ -1165,13 +1185,29 @@ def prepare_predictive_data_combined():
 
             # Verwijder rijen met ontbrekende waarden
             final_df = features_df.dropna().reset_index(drop=True)
+            
+            # FIX: Ensure consistent data types in the final dataframe
+            for col in final_df.columns:
+                if col.startswith(('MsgNumber', 'MsgProc', 'StateAfter')):
+                    final_df[col] = pd.to_numeric(final_df[col], errors='coerce').fillna(0).astype(int)
+                elif col.startswith('interarrival_seconds') or col == 'Y1_time_until_next':
+                    final_df[col] = pd.to_numeric(final_df[col], errors='coerce').fillna(1e-6)
+            
             all_bridges_data.append(final_df)
 
         if not all_bridges_data:
+            st.warning("Geen bruggen data beschikbaar voor predictive modeling")
             return None
 
         # Combineer alle data
         combined_df = pd.concat(all_bridges_data, ignore_index=True)
+        
+        # FIX: Final cleanup - ensure all feature columns are numeric
+        feature_columns = [col for col in combined_df.columns if col not in ['Y1_time_until_next', 'Y2_volgendeStoring', 'brug']]
+        for col in feature_columns:
+            combined_df[col] = pd.to_numeric(combined_df[col], errors='coerce').fillna(0)
+        
+        st.success(f"✅ Gecombineerde predictive data klaar: {len(combined_df)} observaties van {len(all_bridges_data)} bruggen")
         return combined_df
 
     except Exception as e:
@@ -1199,7 +1235,11 @@ def prepare_predictive_data_single(bridge_name):
         if missing_cols:
             st.warning(f"Ontbrekende kolommen voor predictive analyse {bridge_name}: {missing_cols}")
             return None
-
+            
+        # Ensure numeric types
+        for col in ['MsgNumber', 'MsgProc', 'StateAfter']:
+            storings_df[col] = pd.to_numeric(storings_df[col], errors='coerce').fillna(0).astype(int)
+            
         # Check if we have enough data
         if len(storings_df) < 100:
             st.warning(f"Te weinig data voor {bridge_name}: slechts {len(storings_df)} rijen (minimaal 100 nodig)")
@@ -1460,6 +1500,7 @@ def train_and_evaluate_models():
         # Features voor Y1 (exclude Y2 target en brug)
         exclude_cols = ['Y1_time_until_next', 'Y2_volgendeStoring', 'brug']
         X_train = train_data.drop(exclude_cols, axis=1)
+        X_train.columns = X_train.columns.astype(str)
         y1_train = train_data['Y1_time_until_next']
         y2_train = train_data['Y2_volgendeStoring'].astype('category')
 
@@ -1511,6 +1552,7 @@ def train_and_evaluate_models():
 
                     # Bereid test data voor
                     X_test = test_chunk.drop(exclude_cols, axis=1)
+                    X_test.columns = X_test.columns.astype(str)
                     y1_test = test_chunk['Y1_time_until_next']
                     y2_test = test_chunk['Y2_volgendeStoring'].astype('category')
 
