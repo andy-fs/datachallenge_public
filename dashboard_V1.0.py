@@ -1334,7 +1334,7 @@ def train_and_evaluate_models():
         with col2:
             show_last_observations = st.selectbox(
                 "Toon laatste observaties:",
-                options=["Laatste 10 observaties", "Volledige dataset"],
+                options=["Laatste 10 observaties"],
                 index=0,
                 key="last_obs_selector"
             )
