@@ -1,5 +1,5 @@
 # app.py
-# Streamlit dashboard voor ProRail Data Challenge (HGWBRN, HGWBRZ, GWBR)
+# Streamlit dashboard voor Data Challenge (HGWBRN, HGWBRZ, GWBR)
 # Functionaliteit:
 # - CSV's inladen (sensor + storingen) per brug
 # - Tijdsparsering met DST-veilige conversie naar Europe/Amsterdam
