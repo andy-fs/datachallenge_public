@@ -44,8 +44,6 @@ def safe_st_dataframe(df):
         # Fallback: just show the shape
         st.write(f"Data shape: {df.shape}")
 
-# Use it like this:
-safe_st_dataframe(your_dataframe)
 
 # --------------------
 # Page & Style
