@@ -680,6 +680,46 @@ with tab1:
                 storingen_count=('time_local', 'count')
             ).reset_index()
         
+        # Get min and max dates for the date picker
+        min_date = daily_data['date'].min()
+        max_date = daily_data['date'].max()
+        
+        # Date picker section
+        st.markdown("#### 📅 Selecteer datumbereik")
+        col_date1, col_date2 = st.columns(2)
+        with col_date1:
+            start_date = st.date_input(
+                "Startdatum",
+                value=min_date,
+                min_value=min_date,
+                max_value=max_date,
+                key="start_date"
+            )
+        with col_date2:
+            end_date = st.date_input(
+                "Einddatum",
+                value=max_date,
+                min_value=min_date,
+                max_value=max_date,
+                key="end_date"
+            )
+        
+        # Validate date range
+        if start_date > end_date:
+            st.error("❌ Startdatum moet voor einddatum liggen")
+            display_data = daily_data
+            date_info = "ongeldig datumbereik - toon volledige dataset"
+        else:
+            # Filter data to selected date range
+            date_mask = (daily_data['date'] >= start_date) & (daily_data['date'] <= end_date)
+            display_data = daily_data[date_mask]
+            
+            if len(display_data) > 0:
+                date_info = f"geselecteerd datumbereik ({len(display_data)} dagen)"
+            else:
+                date_info = "geen data in geselecteerd bereik - toon volledige dataset"
+                display_data = daily_data
+        
         if has_train_data and not daily_data.empty:
             # Create simple dual-axis plot with minimal layout
             from plotly.subplots import make_subplots
@@ -689,8 +729,8 @@ with tab1:
             # Add storingen trace with better hover info
             fig_s.add_trace(
                 go.Scatter(
-                    x=daily_data['date'], 
-                    y=daily_data['storingen_count'], 
+                    x=display_data['date'], 
+                    y=display_data['storingen_count'], 
                     name="Aantal storingen", 
                     line=dict(color='red'),
                     hovertemplate=(
@@ -705,8 +745,8 @@ with tab1:
             # Add treinen trace with better hover info
             fig_s.add_trace(
                 go.Scatter(
-                    x=daily_data['date'], 
-                    y=daily_data['gem_treinen_per_uur'], 
+                    x=display_data['date'], 
+                    y=display_data['gem_treinen_per_uur'], 
                     name="Gem. treinen per uur", 
                     line=dict(color='blue', dash='dot'),
                     hovertemplate=(
@@ -718,8 +758,11 @@ with tab1:
                 secondary_y=True,
             )
             
-            # Set axis titles
-            fig_s.update_xaxes(title_text="Datum")
+            # Set axis titles and set the x-axis range to the selected dates
+            fig_s.update_xaxes(
+                title_text="Datum",
+                range=[start_date, end_date]  # Zoom to selected date range
+            )
             
             # Configure y-axes for dynamic scaling
             fig_s.update_yaxes(
@@ -766,44 +809,36 @@ with tab1:
             
         else:
             # Fallback to single plot if no train data
-            fig_s = px.area(daily_data, x="date", y="storingen_count", 
+            fig_s = px.area(display_data, x="date", y="storingen_count", 
                            title=f"Storingen per dag – {st_choice}",
                            labels={"date":"Datum", "storingen_count":"Aantal storingen"})
         
         # Display the chart
         st.plotly_chart(fig_s, use_container_width=True)
         
-        # Show statistics for full dataset
+        # Show statistics for selected date range
         if has_train_data and not daily_data.empty:            
+            st.markdown("#### 📊 Statistieken")
             col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
             with col_stat1:
-                avg_storingen = daily_data['storingen_count'].mean()
+                avg_storingen = display_data['storingen_count'].mean()
                 st.metric("Gem. storingen/dag", f"{avg_storingen:.1f}")
             with col_stat2:
-                avg_treinen = daily_data['gem_treinen_per_uur'].mean()
+                avg_treinen = display_data['gem_treinen_per_uur'].mean()
                 st.metric("Gem. treinen/uur", f"{avg_treinen:.1f}")
             with col_stat3:
-                if len(daily_data) > 1:
-                    correlation = daily_data['storingen_count'].corr(daily_data['gem_treinen_per_uur'])
+                if len(display_data) > 1:
+                    correlation = display_data['storingen_count'].corr(display_data['gem_treinen_per_uur'])
                     st.metric("Correlatie", f"{correlation:.2f}")
                 else:
                     st.metric("Correlatie", "N/A")
             with col_stat4:
-                # Show days with data vs total date range
-                if len(daily_data) > 0:
-                    days_with_data = len(daily_data)
-                    total_date_range = (daily_data['date'].max() - daily_data['date'].min()).days + 1
-                    st.metric("Dagen met data", f"{days_with_data}")
-                    # Optional: also show the coverage percentage
-                    coverage_pct = (days_with_data / total_date_range) * 100
-                    st.caption(f"{coverage_pct:.1f}% van {total_date_range} dagen")
-                else:
-                    st.metric("Dagen met data", "0")
+                days_with_data = len(display_data)
+                st.metric("Dagen met data", f"{days_with_data}")
             
             # Add date range info
-            date_range_start = daily_data['date'].min()
-            date_range_end = daily_data['date'].max()
-            st.caption(f"**Datumbereik:** {date_range_start} tot {date_range_end}")
+            st.caption(f"**Weergave:** {date_info}")
+            st.caption(f"**Datumbereik:** {display_data['date'].min()} tot {display_data['date'].max()}")
 
 with tab2:
     st.markdown("### Meest voorkomende meldingen")
