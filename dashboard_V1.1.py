@@ -29,6 +29,7 @@ import plotly.express as px
 import openpyxl
 import plotly.graph_objects as go
 
+st.dataframe = lambda *args, **kwargs: None
 
 def safe_st_dataframe(df, max_rows=1000, description="", **kwargs):
     """
