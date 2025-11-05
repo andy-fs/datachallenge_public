@@ -419,7 +419,7 @@ with col2:
     # Check if any preferred tags are available
     available_preferred = [tag for tag in preferred_tags2 if tag in valid_tag2]
     if available_preferred:
-        default_tag2 = [available_preferred[0], available_preferred[1]]  # Take the first two available preferred tags
+        default_tag2 = [available_preferred[0]]  # Take the first available preferred tags
     elif valid_tag2:
         default_tag2 = [valid_tag2[0]]  # Fallback to first alphabetical
     
