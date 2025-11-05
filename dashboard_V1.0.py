@@ -662,7 +662,6 @@ with tab1:
                 has_cum_data = True
             else:
                 has_cum_data = False
-            st.success("✅ Trein data toegevoegd")
             has_train_data = True
         else:
             st.warning(f"Row mismatch: {len(st_df)} vs {len(st_df_edited)}")
