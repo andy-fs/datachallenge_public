@@ -656,7 +656,6 @@ with tab1:
         # SIMPLE: Just copy the Trein column if row counts match
         if len(st_df) == len(st_df_edited) and 'Trein' in st_df_edited.columns:
             st_df['Trein'] = st_df_edited['Trein'].values
-            st.success("✅ Trein data toegevoegd")
             has_train_data = True
         else:
             st.warning(f"Row mismatch: {len(st_df)} vs {len(st_df_edited)}")
