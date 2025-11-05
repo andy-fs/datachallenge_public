@@ -48,7 +48,7 @@ st.markdown(
 # --------------------
 LOC_TZ = pytz.timezone("Europe/Amsterdam")
 
-@st.cache_data(show_spinner=False, max_entries=1)
+#@st.cache_data(show_spinner=False, max_entries=1)
 def read_sensor_csv(path: str) -> pd.DataFrame:
     encodings_to_try = ["utf-8", "latin1", "windows-1252"]
     for enc in encodings_to_try:
@@ -1076,7 +1076,7 @@ with col_config2:
 # Data Preparation for Predictive Modeling
 # --------------------
 
-@st.cache_data(show_spinner=False, max_entries=2)
+#@st.cache_data(show_spinner=False, max_entries=2)
 def read_clean_storing_csv_for_rf(path: str, sep: str = ";") -> pd.DataFrame:
     """Read clean storings data specifically for RF models - no modifications"""
     encodings_to_try = ["utf-8", "latin1", "windows-1252"]
@@ -1763,8 +1763,8 @@ def train_and_evaluate_models():
             # Tijd voorspelling - use inside labels
             interval_df = pd.DataFrame({
                 'Tijd Interval': list(interval_counts.keys()),
-                'Percentage': [(count / 500) * 100 for count in interval_counts.values()],
-                'Percentage_tekst': [f"{(count / 500) * 100:.1f}%" for count in interval_counts.values()]
+                'Percentage': [(count / 250) * 100 for count in interval_counts.values()],
+                'Percentage_tekst': [f"{(count / 250) * 100:.1f}%" for count in interval_counts.values()]
             })
 
             fig_time_intervals = px.bar(
