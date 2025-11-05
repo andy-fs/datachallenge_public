@@ -1396,6 +1396,28 @@ def safe_temporal_split_multiple(df, test_chunk_pct=0.05, buffer=7):
 # --------------------
 # Model Training and Evaluation
 # --------------------
+def safe_dataframe_display(df, max_rows=1000):
+    """Safely display dataframe by converting problematic columns to avoid Arrow serialization errors"""
+    if df is None or df.empty:
+        return df
+    
+    display_df = df.head(max_rows).copy()
+    
+    # Convert any object columns that might contain mixed types
+    for col in display_df.columns:
+        if display_df[col].dtype == 'object':
+            try:
+                # Try to convert to numeric first, if it fails keep as string
+                display_df[col] = pd.to_numeric(display_df[col], errors='ignore')
+                # If still object after numeric conversion, ensure it's string
+                if display_df[col].dtype == 'object':
+                    display_df[col] = display_df[col].astype(str)
+            except Exception:
+                # Fallback: convert to string
+                display_df[col] = display_df[col].astype(str)
+    
+    return display_df
+
 
 def train_and_evaluate_models():
     """Train en evalueer Random Forest modellen voor predictive maintenance"""
@@ -1442,11 +1464,11 @@ def train_and_evaluate_models():
                 st.write("**Laatste 10 storingsobservaties - HGWBRN (originele data):**")
                 if show_last_observations == "Laatste 10 observaties":
                     if len(st_HN) >= 14:
-                        st.dataframe(st_HN.tail(14).head(10))  # Show rows 11-20 from the end
+                        st.dataframe(safe_dataframe_display(st_HN.tail(14).head(10)))  # Show rows 11-20 from the end
                     else:
-                        st.dataframe(st_HN.head(10))  # Fallback if not enough data
+                        st.dataframe(safe_dataframe_display(st_HN.head(10)))  # Fallback if not enough data
                 else:
-                    st.dataframe(st_HN.head(10))
+                    st.dataframe(safe_dataframe_display(st_HN.head(10)))
             else:
                 st.warning("Geen HGWBRN storingsdata beschikbaar")
         else:
@@ -1463,11 +1485,11 @@ def train_and_evaluate_models():
                 st.write(f"**Laatste 10 storingsobservaties - {selected_bridge} (originele data):**")
                 if show_last_observations == "Laatste 10 observaties":
                     if len(storings_df) >= 14:
-                        st.dataframe(storings_df.tail(14).head(10))  # Show rows 11-20 from the end
+                        st.dataframe(safe_dataframe_display(storings_df.tail(14).head(10)))  # Show rows 11-20 from the end
                     else:
-                        st.dataframe(storings_df.head(10))  # Fallback if not enough data
+                        st.dataframe(safe_dataframe_display(storings_df.head(10)))  # Fallback if not enough data
                 else:
-                    st.dataframe(storings_df.head(10))
+                    st.dataframe(safe_dataframe_display(storings_df.head(10)))
             else:
                 st.warning(f"Geen storingsdata beschikbaar voor {selected_bridge}")
 
