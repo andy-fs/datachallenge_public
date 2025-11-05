@@ -656,6 +656,7 @@ with tab1:
         # SIMPLE: Just copy the Trein column if row counts match
         if len(st_df) == len(st_df_edited) and 'Trein' in st_df_edited.columns:
             st_df['Trein'] = st_df_edited['Trein'].values
+            st.success("✅ Trein data toegevoegd")
             has_train_data = True
         else:
             st.warning(f"Row mismatch: {len(st_df)} vs {len(st_df_edited)}")
@@ -704,7 +705,22 @@ with tab1:
             fig_s.update_yaxes(title_text="Aantal storingen", secondary_y=False)
             fig_s.update_yaxes(title_text="Gem. treinen per uur", secondary_y=True)
             
-            fig_s.update_layout(title=f"Storingen en treinverkeer – {st_choice}")
+            # Add synchronization for zooming
+            fig_s.update_layout(
+                title=f"Storingen en treinverkeer – {st_choice}",
+                # Enable zoom synchronization
+                xaxis=dict(
+                    rangeslider=dict(visible=True),
+                    type="date"
+                )
+            )
+            
+            # Add JavaScript for zoom synchronization
+            fig_s.update_layout(
+                # This ensures both y-axes scale proportionally when zooming
+                yaxis=dict(anchor="x", domain=[0.0, 1.0]),
+                yaxis2=dict(anchor="x", domain=[0.0, 1.0], overlaying="y")
+            )
             
         else:
             # Fallback to single plot
@@ -716,6 +732,7 @@ with tab1:
         
         # Show statistics if train data is available
         if has_train_data and not daily_data.empty:
+            st.markdown("#### 📊 Statistieken")
             col_stat1, col_stat2, col_stat3 = st.columns(3)
             with col_stat1:
                 avg_storingen = daily_data['storingen_count'].mean()
