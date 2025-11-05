@@ -370,6 +370,8 @@ Hoge Gouwespoorbrug Noord/Zuid (hefbrug) & Lage Gouwespoorbrug (draaibrug).
 # --------------------
 # Sensor: selectie & time series
 # --------------------
+st.markdown("_____")
+
 st.markdown("## 🔎 Sensorverkenning")
 bridge_choice = st.selectbox("Kies een brug", options=["HGWBRN", "HGWBRZ", "GWBR"], index=0)
 
@@ -481,6 +483,8 @@ else:
 # --------------------
 # Laatste storingen – dropdown overzicht
 # --------------------
+st.markdown("_____")
+
 st.markdown("## 🗓️ Laatste week – Storingen overzicht")
 
 if not latest_storingen:
@@ -517,6 +521,8 @@ else:
 # --------------------
 # Brugcyclus-detectie (open/dicht episodes)
 # --------------------
+st.markdown("_____")
+
 st.markdown("## 🔄 Brugcycli (open/dicht)")
 
 
@@ -618,7 +624,7 @@ else:
 # --------------------
 # Storingen
 # --------------------
-
+st.markdown("_____")
 
 st.markdown("## ⚠ Storingen")
 
@@ -782,6 +788,8 @@ with tab2:
 # --------------------
 # Predictive Maintenance Analysis (Random Forest)
 # --------------------
+st.markdown("_____")
+
 st.markdown("## 🤖 Predictive Maintenance Analyse")
 
 # --------------------
