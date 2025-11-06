@@ -544,7 +544,9 @@ else:
 
         for i, row in day_df.iterrows():
             with st.expander(f"🕒 {row['Datumtijd'].strftime('%H:%M:%S')} — {row['Bericht']}"):
-                st.write(row)
+                row_dict = row.to_dict()
+                for key, value in row_dict.items():
+                    st.write(f"**{key}:** {value}")
 
 # --------------------
 # Brugcyclus-detectie (open/dicht episodes)
